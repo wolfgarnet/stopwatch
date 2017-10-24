@@ -1,47 +1,51 @@
-package stopwatch
+package util
 
 import (
-	"time"
 	"fmt"
+	"time"
 )
 
-type task struct {
-	name string
-	start, end time.Time
+type lap struct {
+	name     string
+	duration time.Duration
 }
 
-func (t task) duration() time.Duration {
-	return t.end.Sub(t.start)
+type StopWatch struct {
+	started, stopped time.Time
+	lastLap          time.Time
+	laps             []lap
 }
 
-type StopWatch struct  {
-	initial time.Time
-	tasks map[string]*task
+func NewStopWatch() *StopWatch {
+	return &StopWatch{}
 }
 
-func NewStopWatch() StopWatch {
-	sw := StopWatch{time.Now(), make(map[string]*task)}
+func (sw *StopWatch) Start() *StopWatch {
+	sw.started = time.Now()
+	sw.lastLap = sw.started
 	return sw
 }
 
-func (sw StopWatch) Start(name string) {
-	task := &task{name, time.Now(), time.Unix(0,0)}
-	sw.tasks[name] = task
+func (sw *StopWatch) NewLap(name string) {
+	now := time.Now()
+	duration := now.Sub(sw.lastLap)
+	sw.lastLap = now
+	sw.laps = append(sw.laps, lap{name, duration})
 }
 
-func (sw StopWatch) Stop(name string) error {
-	task, ok := sw.tasks[name]
-	if !ok {
-		return fmt.Errorf("Task with name \"%v\" does not exist", name)
+func (sw *StopWatch) Stop() *StopWatch {
+	sw.stopped = time.Now()
+	return sw
+}
+
+func (sw *StopWatch) Duration() time.Duration {
+	return sw.stopped.Sub(sw.started)
+}
+
+func (sw *StopWatch) Laps() {
+	d := sw.Duration()
+	fmt.Printf("Laps: Total=%v\n", d)
+	for i, lap := range sw.laps {
+		fmt.Printf(" [%v] %-15v: %-12v (%v%%)\n", i, lap.name, lap.duration, float32(int((float32(lap.duration.Nanoseconds())/float32(d.Nanoseconds()))*10000))/100)
 	}
-
-	task.end = time.Now()
-	return nil
 }
-
-func (sw StopWatch) Print() {
-	for k, v := range sw.tasks {
-		fmt.Printf("%v: %v\n", k, v.duration())
-	}
-}
-
